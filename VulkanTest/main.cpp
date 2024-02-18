@@ -17,6 +17,10 @@
 
 #include<fstream>//for loading in shaders
 
+#include<glm/glm.hpp> //for ... shaders
+
+#include<array> //for vertex attributes
+
 using std::cout; 
 using std::endl; 
 
@@ -102,7 +106,52 @@ struct SwapChainSupportDetails {
 	std::vector<VkPresentModeKHR> presentModes;
 };
 
+struct Vertex
+{
+	glm::vec2 pos; 
+	glm::vec3 color; 
 
+	//a "helper" function:
+	static VkVertexInputBindingDescription getBindingDesciption()
+	{
+		VkVertexInputBindingDescription bindingDescription{}; 
+		bindingDescription.binding = 0; 
+		bindingDescription.stride = sizeof(Vertex); //Noice!
+		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; //means move to next after each vertex
+
+		return bindingDescription; 
+	}
+
+	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+	{
+		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions; 
+
+		//the inPosition var from vert shader: 
+		attributeDescriptions[0].binding = 0; 
+		attributeDescriptions[0].location = 0; //location - perhaps as in the shader file!
+		attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+		//R, G here -> vec2
+		attributeDescriptions[0].offset = offsetof(Vertex, pos); //pos is (vec2) member var of vertex
+		//offsetof comes from C! -> header file (stddef.h)
+
+		//the inColor var from vert shader: 
+		attributeDescriptions[1].binding = 0;
+		attributeDescriptions[1].location = 1;
+		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT; //S means SIGNED (float)
+		//RGB here, so vec3
+		attributeDescriptions[1].offset = offsetof(Vertex, color); //color is vec3 member var of `Vertex`
+
+		return attributeDescriptions; 
+	}
+};
+
+//
+const std::vector<Vertex> vertices = 
+{
+	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+};
 
 //Doxygen: 
 /**
@@ -826,12 +875,17 @@ private:
 		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 		dynamicState.pDynamicStates = dynamicStates.data();
 
+
+		//using `Vertex` struct: 
+		auto bindingDescription = Vertex::getBindingDesciption(); 
+		auto attributeDescriptions = Vertex::getAttributeDescriptions(); 
+
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputInfo.vertexBindingDescriptionCount = 0; //FOR NOW - since specified in .vert file
-		vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
-		vertexInputInfo.vertexAttributeDescriptionCount = 0;
-		vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
