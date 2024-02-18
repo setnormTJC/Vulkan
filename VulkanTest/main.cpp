@@ -17,6 +17,9 @@
 
 #include<fstream>//for loading in shaders
 
+using std::cout; 
+using std::endl; 
+
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
@@ -51,7 +54,8 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
 }
 
 
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+void DestroyDebugUtilsMessengerEXT(VkInstance instance, 
+	VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 	if (func != nullptr) {
 		func(instance, debugMessenger, pAllocator);
@@ -97,7 +101,13 @@ struct SwapChainSupportDetails {
 
 
 
+//Doxygen: 
+/**
+* Asdadsfasd
+* 
+* @param None
 
+*/ 
 class HelloTriangleApplication {
 public:
 	void run()
@@ -110,10 +120,13 @@ public:
 
 private:
 
+	//HelloTriangleApplication::LOTS_OF_STUFF
 	//begin the MANY member variables: 
 	GLFWwindow* window;
 	VkInstance instance; 
+	
 	VkDebugUtilsMessengerEXT debugMessenger; 
+
 	VkSurfaceKHR surface;
 
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -123,12 +136,9 @@ private:
 	VkQueue presentQueue; //as in "presentation" queue (NOT as in the currentQueue)
 
 	VkSwapchainKHR swapChain;
-
 	std::vector<VkImage> swapChainImages;
-	VkFormat swapChainImageFormat;
-	VkExtent2D swapChainExtent;
-
-
+	VkFormat swapChainImageFormat; //has to do with number of bytes for R, G, B
+	VkExtent2D swapChainExtent;//has a width and height - similar to screen resolution
 	std::vector<VkImageView> swapChainImageViews;
 
 	VkRenderPass renderPass;
@@ -149,7 +159,6 @@ private:
 
 
 	//begin member functions 
-
 	bool checkValidationLayerSupport()
 	{
 		uint32_t layerCount; 
@@ -157,8 +166,13 @@ private:
 
 		std::vector<VkLayerProperties> availableLayers(layerCount);
 		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-		//return false;
+		
+		//cout << "layer name\tlayer desc." << endl; 
+		//for (auto& layer : availableLayers)
+		//{
+		//	std::cout << layer.layerName << "\t" << layer.description << std::endl;
+		//}
+		//cout << "\n\n";
 
 		for (const char* layerName : validationLayers)
 		{
@@ -197,13 +211,16 @@ private:
 
 	}
 
+	/**
+	* An important one - where validation layer presents error messages (or warnings)
+	*/
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType,
 		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 		void* pUserData)
 	{
-		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl; 
+		std::cerr << "\n\nvalidation layer: " << pCallbackData->pMessage << std::endl; 
 
 		return VK_FALSE; //0U ...
 	}
@@ -310,11 +327,16 @@ private:
 
 	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) {
 		SwapChainSupportDetails details;
-
+	
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+		//cout << details.capabilities.currentExtent.height << endl; //height = HEIGHT
+		//cout << details.capabilities.currentTransform << endl; // = 1 (no transform (rotation))
+		//cout << details.capabilities.maxImageCount << endl; //64 (not sure about it)
+		
 
 		uint32_t formatCount;
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+		//cout << formatCount << endl; //4 
 
 		if (formatCount != 0) {
 			details.formats.resize(formatCount);
@@ -323,7 +345,7 @@ private:
 
 		uint32_t presentModeCount;
 		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
-
+		//examples of present modes: immediate, fifo, "mailbox"
 		if (presentModeCount != 0) {
 			details.presentModes.resize(presentModeCount);
 			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
@@ -348,7 +370,7 @@ private:
 
 
 		//std::cout << "\n\nExtentsion supported? " << extensionsSupported << std::endl; 
-		return indices.isComplete() && extensionsSupported && swapChainAdequate; 
+		return indices.isComplete() && extensionsSupported && swapChainAdequate; //Intel UHD meets these three
 	}
 
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
@@ -466,9 +488,11 @@ private:
 		//}
 
 		
+
 		//uncomment if using `rateDeviceSuitability` (will pick NVIDIA graphics card)
-		
-		/*std::multimap<int, VkPhysicalDevice> candidates;
+		//NOTE: as of first doing HelloTriangle, Task Mgr shows BOTH at ~50% usage! if this is uncommented
+		/*
+		std::multimap<int, VkPhysicalDevice> candidates;
 		
 		for (const auto& device : devices)
 		{
@@ -522,12 +546,9 @@ private:
 
 		VkDeviceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	
 		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 		createInfo.pQueueCreateInfos = queueCreateInfos.data();
-
 		createInfo.pEnabledFeatures = &deviceFeatures;
-
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 		createInfo.ppEnabledExtensionNames = deviceExtensions.data(); 
 
@@ -535,6 +556,7 @@ private:
 			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 			createInfo.ppEnabledLayerNames = validationLayers.data();
 		}
+
 		else {
 			createInfo.enabledLayerCount = 0;
 		}
@@ -545,12 +567,23 @@ private:
 			throw std::runtime_error("could not create logical device!");
 		}
 
+		//cout << device << endl; //this is just a memory location (Vk_device is a pointer type)
+
 		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+		//cout << graphicsQueue << endl; //ALSO just a memory location 
 		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 	}
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 		for (const auto& availableFormat : availableFormats) {
+			//cout << availableFormat.format << endl; //44 and 50 (enum values) 
+			//Q: what is the difference between these two formats?
+			//A: 44 is VK_FORMAT_B8G8R8A8_UNORM, 50 is VK_FORMAT_B8G8R8A8_SRGB
+			//Q: what is the difference between UNORM and SRGB?
+			//A: UNORM is linear, SRGB is non-linear
+			//Q: what is the difference between linear and non-linear?
+			//A: linear is a 1:1 relationship between input and output, non-linear is not
+
 			if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 				return availableFormat;
 			}
@@ -596,9 +629,10 @@ private:
 		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
 
 		VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+		
 		VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
 		VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
-
+		
 
 		uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 		if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
@@ -642,13 +676,14 @@ private:
 			throw std::runtime_error("\n\nfailed to create swap chain!\n\n");
 		}
 
+		//cout << swapChain << endl; //a pointer 
+
 		vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
 		swapChainImages.resize(imageCount);
 		vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
 
 		swapChainImageFormat = surfaceFormat.format;
 		swapChainExtent = extent;
-
 
 	}
 
@@ -679,7 +714,7 @@ private:
 			if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
 				throw std::runtime_error("failed to create image views!");
 			}
-
+			//cout << swapChainImageViews[i] << endl; //prints THREE memory locations
 		}
 
 	}
@@ -702,12 +737,12 @@ private:
 		VkAttachmentReference colorAttachmentRef{};
 		colorAttachmentRef.attachment = 0;
 		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; 
-		//same "layout" as in shader?
+		//same "layout" as in shader, I think
 
 		VkSubpassDescription subpass{};
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-		subpass.colorAttachmentCount = 1;
+		subpass.colorAttachmentCount = 1; //perhaps likely to change?
 		subpass.pColorAttachments = &colorAttachmentRef;
 
 		VkSubpassDependency dependency{};
@@ -731,32 +766,32 @@ private:
 		if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create render pass!");
 		}
-
+		//cout << renderPass << endl; //once again, a memory location 
 	}
 
 	//An even more BEASTLY function 
 	void createGraphicsPipeline()
 	{
-		auto vertShaderCode = readFile("shaders/vert.spv");
+		auto vertShaderCode = readFile("shaders/vert.spv"); //must be compiled with .bat file in "shaders" folder
 		auto fragShaderCode = readFile("shaders/frag.spv");
 
-		//std::cout << "\n\nvert shader size: " << vertShaderCode.size() << std::endl; 
+		//std::cout << "\n\nvert shader size: " << vertShaderCode.size() << std::endl; //number of Bytes of file
 		//std::cout << "frag shader size: " << fragShaderCode.size() << std::endl;
 
-		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode); //func defined down below
 		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 		
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT; //VERTEX!
 		vertShaderStageInfo.module = vertShaderModule;
-		vertShaderStageInfo.pName = "main";
+		vertShaderStageInfo.pName = "main";//as in the "main" function 
 
 		VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
 		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT; //FRAGMENT (geometry, compute, and tesselation also avail)
 		fragShaderStageInfo.module = fragShaderModule;
-		fragShaderStageInfo.pName = "main";
+		fragShaderStageInfo.pName = "main"; 
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = 
 		{ 
@@ -766,7 +801,11 @@ private:
 
 		std::vector<VkDynamicState> dynamicStates = {
 			VK_DYNAMIC_STATE_VIEWPORT,
-			VK_DYNAMIC_STATE_SCISSOR
+			VK_DYNAMIC_STATE_SCISSOR 
+			//dynamic means `vkCmdSetScissor/ViewPort` must be called by any drawing commands
+			// These two functions are called in `recordCommand` function below
+			//Q: What is scissor?
+			//A: It is a rectangle that defines the area of the framebuffer that the output will be rendered to
 		};
 
 		VkPipelineDynamicStateCreateInfo dynamicState{};
@@ -774,19 +813,23 @@ private:
 		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 		dynamicState.pDynamicStates = dynamicStates.data();
 
-
-
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputInfo.vertexBindingDescriptionCount = 0;
+		vertexInputInfo.vertexBindingDescriptionCount = 0; //FOR NOW - since specified in .vert file
 		vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
 		vertexInputInfo.vertexAttributeDescriptionCount = 0;
 		vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
 
-
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; 
+		//inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		//inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		//inputAssembly.topology -> defaults to 
+		//VK_PRIMITIVE_TOPOLOGY_POINT_LIST = 0, if not explicitly initialized
+
+		//similar to GL_LINES, GL_TRIANGLE_FAN, etc.
+		//points, lines, and triangles are the only allowed primitives in the enum (no circles, rectangles, or other) 
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 		VkPipelineViewportStateCreateInfo viewportState{};
@@ -800,8 +843,10 @@ private:
 		rasterizer.depthClampEnable = VK_FALSE;
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+		//rasterizer.polygonMode = VK
+		//rasterizer.polygonMode = VK_POLYGON_MODE_LINE; //"WORKS"! (though validation layer gives warning/error)
 		rasterizer.lineWidth = 1.0f; 
-		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT; //only important for 3D, I think
 		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterizer.depthBiasEnable = VK_FALSE;
 		rasterizer.depthBiasConstantFactor = 0.0f; // Optional
@@ -811,36 +856,20 @@ private:
 		VkPipelineMultisampleStateCreateInfo multisampling{};
 		multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		multisampling.sampleShadingEnable = VK_FALSE;
-		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT; //No "multisampling" for now
 
 		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 		colorBlendAttachment.blendEnable = VK_FALSE;
 
-		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
-		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
-
 		VkPipelineColorBlendStateCreateInfo colorBlending{};
 		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 		colorBlending.logicOpEnable = VK_FALSE;
-		colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
 		colorBlending.attachmentCount = 1;
 		colorBlending.pAttachments = &colorBlendAttachment;
-		colorBlending.blendConstants[0] = 0.0f; // Optional
-		colorBlending.blendConstants[1] = 0.0f; // Optional
-		colorBlending.blendConstants[2] = 0.0f; // Optional
-		colorBlending.blendConstants[3] = 0.0f; // Optional
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 0; // Optional
-		pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
-		pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-		pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
 		if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 		{
@@ -866,10 +895,6 @@ private:
 		pipelineInfo.renderPass = renderPass;
 		pipelineInfo.subpass = 0;
 
-		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
-		pipelineInfo.basePipelineIndex = -1; // Optional
-
-
 		if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create graphics pipeline!");
 		}
@@ -886,7 +911,7 @@ private:
 		createInfo.codeSize = code.size();
 		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
-		VkShaderModule shaderModule;
+		VkShaderModule shaderModule; //only referenced here, evidently, so not a global class member
 		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 		{
 			throw std::runtime_error("failed to create shader module!");
@@ -951,8 +976,6 @@ private:
 	{
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = 0; // Optional
-		beginInfo.pInheritanceInfo = nullptr; // Optional
 
 		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
 			throw std::runtime_error("failed to begin recording command buffer!");
@@ -967,6 +990,7 @@ private:
 		renderPassInfo.renderArea.extent = swapChainExtent;
 
 		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} }; //even more complicated than OpenGL
+		//the background color!
 		renderPassInfo.clearValueCount = 1;
 		renderPassInfo.pClearValues = &clearColor;
 
@@ -981,7 +1005,7 @@ private:
 		viewport.height = static_cast<float>(swapChainExtent.height);
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
-		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+		vkCmdSetViewport(commandBuffer, 0, 1, &viewport); //only one viewport
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
@@ -990,7 +1014,12 @@ private:
 
 		//the big one: 
 		vkCmdDraw(commandBuffer, 3, 1, 0, 0); 
-
+		//vkCmdDraw(commandBuffer, 2, 1, 0, 0); //this just won't draw anything with triangles topology 
+		//											- no validation layer error
+		//										//However, it WILL draw a line if using TOPOLOGY_LINE_LIST in 
+		//										//`createGraphicsPipeline` above
+		//vkCmdDraw(commandBuffer, 6, 1, 0, 0); //WILL work
+		//also - no errors in validation layers if no vkCmdDraw issued
 
 		vkCmdEndRenderPass(commandBuffer);
 
@@ -1000,6 +1029,10 @@ private:
 
 	}
 
+	/**
+	fancy semaphore stuff
+	CALLED BY: `initVulkan` (happens to be the last function initVulkan calls)
+	*/
 	void createSyncObjects()
 	{
 		VkSemaphoreCreateInfo semaphoreInfo{};
@@ -1042,6 +1075,11 @@ private:
 
 	}
 
+	/**
+	CALLED BY:  `mainLoop`
+	CALLS: `recordCommandBuffer`
+	Extensive use of semaphores (and "fences") due to asynchronous nature of Vulkan/GPU)
+	*/
 	void drawFrame()
 	{
 		//due to asynchrononicity, must use semaphores
@@ -1074,7 +1112,11 @@ private:
 		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence) != VK_SUCCESS) {
 			throw std::runtime_error("failed to submit draw command buffer!");
 		}
+		//Q: What is VkFence? 
+		//A: It is a synchronization primitive that can be used to insert a dependency FROM a queue to the host
 
+		//Q: What is VkSemaphore?
+		//A: It is a synchronization primitive that can be used to insert a dependency BETWEEN queues
 
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1108,15 +1150,17 @@ private:
 	/// </summary>
 	void cleanup() {
 
-		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr); 
 		vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
 		vkDestroyFence(device, inFlightFence, nullptr);
+		// these are all created by `createSyncObjects` (the last function `initVulkan` calls)
 
 		vkDestroyCommandPool(device, commandPool, nullptr); 
 
 		for (auto framebuffer : swapChainFramebuffers) {
 			vkDestroyFramebuffer(device, framebuffer, nullptr);
 		}
+
 
 		vkDestroyPipeline(device, graphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -1149,6 +1193,8 @@ private:
 int main()
 {
 	HelloTriangleApplication app; 
+
+	
 
 	try
 	{
