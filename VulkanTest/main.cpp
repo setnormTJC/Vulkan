@@ -133,7 +133,8 @@ struct Vertex
 		//R, G here -> vec2
 		attributeDescriptions[0].offset = offsetof(Vertex, pos); //pos is (vec2) member var of vertex
 		//offsetof comes from C! -> header file (stddef.h)
-
+		//inputs to `offsetof` in documentation are 's' and 'm' -> struct and member, possibly
+		
 		//the inColor var from vert shader: 
 		attributeDescriptions[1].binding = 0;
 		attributeDescriptions[1].location = 1;
@@ -145,7 +146,7 @@ struct Vertex
 	}
 };
 
-//
+//2D triangle		//red bottom center, green top right, blue top left
 const std::vector<Vertex> vertices = 
 {
 	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
@@ -211,6 +212,9 @@ private:
 	uint32_t currentFrame = 0; 
 
 	bool framebufferResized = false;
+
+	VkBuffer vertexBuffer; 
+	VkDeviceMemory vertexBufferMemory;
 
 	//begin member functions 
 	bool checkValidationLayerSupport()
@@ -877,13 +881,15 @@ private:
 
 
 		//using `Vertex` struct: 
-		auto bindingDescription = Vertex::getBindingDesciption(); 
+		auto bindingDescription = Vertex::getBindingDesciption();  
+		//STATIC! so can be called w/o making Vertex object
 		auto attributeDescriptions = Vertex::getAttributeDescriptions(); 
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
 		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+		
 		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
@@ -1067,6 +1073,11 @@ private:
 
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
+		VkBuffer vertexBuffers[] = { vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
@@ -1082,7 +1093,10 @@ private:
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 		//the big one: 
-		vkCmdDraw(commandBuffer, 3, 1, 0, 0); 
+		vkCmdDraw(commandBuffer, vertices.size(), 1, 0, 0); 
+
+		//vkCmdDraw(commandBuffer, 3, 1, 0, 0); //this used the simpler (more limited) version 
+		//										//of this program where vertices were defined in fileName.vert
 		//vkCmdDraw(commandBuffer, 2, 1, 0, 0); //this just won't draw anything with triangles topology 
 		//											- no validation layer error
 		//										//However, it WILL draw a line if using TOPOLOGY_LINE_LIST in 
@@ -1104,9 +1118,9 @@ private:
 	*/
 	void createSyncObjects()
 	{
-		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT); 
+		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 		renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT); 
+		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -1119,7 +1133,7 @@ private:
 		{
 			if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
 				vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-				vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) 
+				vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
 			{
 				throw std::runtime_error("failed to create semaphores!");
 			}
@@ -1128,13 +1142,13 @@ private:
 
 	}
 
-	/*Handles window re-sizing 
+	/*Handles window re-sizing
 	 Calls `cleanupSwapChain`
 	*/
 	void recreateSwapChain() {
 
 		int width = 0, height = 0; //handles window minimization -> program will crash if minimized without this
-		glfwGetFramebufferSize(window, &width, &height); 
+		glfwGetFramebufferSize(window, &width, &height);
 		while (width == 0 || height == 0) {
 			glfwGetFramebufferSize(window, &width, &height);
 			glfwWaitEvents();
@@ -1143,7 +1157,7 @@ private:
 
 		vkDeviceWaitIdle(device);
 
-		cleanupSwapChain(); 
+		cleanupSwapChain();
 
 		createSwapChain();
 		createImageViews();
@@ -1161,6 +1175,71 @@ private:
 		}
 
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
+
+	}
+
+	void createVertexBuffer()
+	{
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = sizeof(vertices[0]) * vertices.size(); //makes sense - HOORAY!
+		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; //modifying in future ...
+
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; //only used by GRAPHICS_QUEUE 
+
+		if ((vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS))
+		{
+			throw std::runtime_error("failed to create vertex buffer");
+		}
+
+
+		VkMemoryRequirements memRequirements;
+		vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memRequirements.size;
+
+		allocInfo.memoryTypeIndex = findMemoryType
+		(memRequirements.memoryTypeBits,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+
+		if ((vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory)) != VK_SUCCESS)
+		{
+			throw std::runtime_error("could not allocate vertex buffer memory");
+		}
+
+		vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0); 
+
+
+		void* data;
+		vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+		memcpy(data, vertices.data(), (size_t)bufferInfo.size); //HERE - vertices are copied into memory 
+		vkUnmapMemory(device, vertexBufferMemory); 
+
+
+	}
+
+	/*
+	 CALLED BY: createVertexBuffer
+	 @param uint32_t "type filter" from `createVertexBuffer` 
+	 @param a vulkan property flags struct (also obtained in `createVertexBuffer`)\ 
+	*/
+	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+
+		VkPhysicalDeviceMemoryProperties memProperties;
+		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+		//cout << memProperties.memoryTypes << endl;  //hold off until validation layer error resolved
+
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+			if ((typeFilter & (1 << i)) && 
+				(memProperties.memoryTypes[i].propertyFlags & properties) == properties) 
+			{
+				return i;
+			}
+		}
 
 	}
 
@@ -1183,6 +1262,9 @@ private:
 
 		createFramebuffers();
 		createCommandPool();
+		
+		createVertexBuffer(); 
+
 		createCommandBuffers();
 
 		createSyncObjects(); //SEMAPHORES! (and "fences") 
@@ -1282,6 +1364,10 @@ private:
 	void cleanup() {
 
 		cleanupSwapChain();
+
+		vkDestroyBuffer(device, vertexBuffer, nullptr);
+		vkFreeMemory(device, vertexBufferMemory, nullptr); 
+
 
 		vkDestroyPipeline(device, graphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
