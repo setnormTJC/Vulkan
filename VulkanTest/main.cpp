@@ -15,7 +15,7 @@
 
 #include<algorithm> //for std::clamp
 
-#include<fstream>//for loading in shaders
+#include<fstream>//for loading in shader files
 
 
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES 
@@ -27,9 +27,15 @@
 //for matrix transformations (animation of shape) 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE //depth-testing! for 3D images
+
+#define GLM_ENABLE_EXPERIMENTAL //for HASH functions! (vertex deduplication/unordered_map stuff)
+
 #include<glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp> //G-TRUC creation -> has builtin rotate, translate, scale functions
 										//so no need to reinvent that wheel 
+
+#include<glm/gtx/hash.hpp> //file hash.inl includes the actual implementation of hash function 
+							//header is only function declarations
 
 #include<chrono> //Hooray! For frames per second type business!
 
@@ -38,6 +44,9 @@
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include<tiny_obj_loader.h> //for MODELS! (complicated textures/meshes)
+
+
+#include<unordered_map> //for vertex deduplication (shared vertices among edges) 
 
 using std::cout; 
 using std::endl; 
@@ -173,7 +182,30 @@ struct Vertex
 		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 		return attributeDescriptions; 
 	}
+
+	//for unordered map (hash table)
+	bool operator==(const Vertex& other) const {
+		return pos == other.pos && color == other.color && texCoord == other.texCoord;
+	}
 };
+
+
+namespace std 
+{
+	//for "hash calculation" 
+	//NOTE - this template specialization MUST be below the Vertex struct def.
+	template<> struct hash<Vertex>
+	{
+		size_t operator()(Vertex const& vertex) const
+		{
+			return
+				((hash<glm::vec3>()(vertex.pos) ^ //see hash.inl (inline) file for hash function implementations
+				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+				(hash<glm::vec2>()(vertex.texCoord) << 1);
+			//bitwise XOR and bitshifting galore...
+		}
+	};
+}
 
 
 struct UniformBufferObject {
@@ -292,6 +324,7 @@ private:
 	std::vector<VkDescriptorSet> descriptorSets;
 
 	VkImage textureImage;
+	uint32_t mipLevels;
 	VkDeviceMemory textureImageMemory;
 
 
@@ -859,7 +892,9 @@ private:
 		swapChainImageViews.resize(swapChainImages.size());
 
 		for (size_t i = 0; i < swapChainImages.size(); i++) {
-			swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+			swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat,
+				mipLevels,
+				VK_IMAGE_ASPECT_COLOR_BIT);
 				//swapChainImageFormat is surface (screen) format
 			//cout << swapChainImageViews[i] << endl; //prints THREE memory locations
 		}
@@ -1024,9 +1059,6 @@ private:
 		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; //might be problematic if rotating!
 
 		rasterizer.depthBiasEnable = VK_FALSE;
-		rasterizer.depthBiasConstantFactor = 0.0f; // Optional
-		rasterizer.depthBiasClamp = 0.0f; // Optional
-		rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
 
 		VkPipelineMultisampleStateCreateInfo multisampling{};
 		multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -1191,9 +1223,6 @@ private:
 		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 		renderPassInfo.pClearValues = clearValues.data();
 
-
-
-
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
@@ -1204,7 +1233,6 @@ private:
 
 		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 		//again, uint_32 if > 65K unique vertices (switched for loading models section)
-
 
 		VkViewport viewport{};
 		viewport.x = 0.0f;
@@ -1224,7 +1252,6 @@ private:
 		//Binding "Descriptor sets" (relates to uniforms - uniform buffer objects - needed for matrix transforms)
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
 			0, 1, &descriptorSets[currentFrame], 0, nullptr);
-
 
 		//the big one: 
 		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0); 
@@ -1334,8 +1361,6 @@ private:
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
 			stagingBuffer, stagingBufferMemory);
 
-
-
 		void* data;
 		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
 		memcpy(data, vertices.data(), (size_t)bufferSize); //HERE - vertices are copied into memory 
@@ -1375,7 +1400,6 @@ private:
 
 	}
 
-
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
 		VkBuffer& buffer, VkDeviceMemory& bufferMemory)
 	{
@@ -1402,8 +1426,6 @@ private:
 		}
 
 		vkBindBufferMemory(device, buffer, bufferMemory, 0);
-
-
 	}
 
 
@@ -1435,8 +1457,6 @@ private:
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			stagingBuffer, stagingBufferMemory);
 
-
-
 		void* data;
 		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
 		memcpy(data, indices.data(), (size_t)bufferSize); //HERE - vertices are copied into memory 
@@ -1463,7 +1483,6 @@ private:
 											//(a rectangle/two triangles) will get transformed 
 
 		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
 
 		VkDescriptorSetLayoutBinding samplerLayoutBinding{}; //for textures
 		samplerLayoutBinding.binding = 1;
@@ -1556,7 +1575,6 @@ private:
 			//this imageView is NULL?!!!!
 			
 			imageInfo.sampler = textureSampler;
-		
 
 			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
@@ -1593,7 +1611,7 @@ private:
 		//stbi_uc* pixels = stbi_load("textures/doris.jpg", &texWidth, &texHeight, &texChannels,
 		//	STBI_rgb_alpha);
 
-		//stbi_uc* pixels = stbi_load("textures/doris.jpg", &texWidth, &texHeight, &texChannels,
+		//stbi_uc* pixels = stbi_load("textures/statue.jpg", &texWidth, &texHeight, &texChannels,
 		//	STBI_rgb_alpha);
 
 		//OTHER jpgs work as well! Even with different image dimensions (and ratios)
@@ -1603,6 +1621,9 @@ private:
 		stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), 
 			&texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
+		mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+
+			//mipMap! mip -> much in (small) place; map -> mapping
 
 		VkDeviceSize imageSize = texWidth * texHeight * 4; 
 
@@ -1624,13 +1645,20 @@ private:
 
 		stbi_image_free(pixels); //stb's deallocate function
 
-		createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+		createImage(texWidth, texHeight, mipLevels, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			//THIRD TRANSFER_SRC_BIT added to allow mipmap levels
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 
-		transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, 
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+							,mipLevels);
 		copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-		transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		//commented out line below for using mipmaps
+		//transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+		//	VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		//	, mipLevels);
 
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
 		vkFreeMemory(device, stagingBufferMemory, nullptr);
@@ -1639,7 +1667,8 @@ private:
 	/*CALLED by: createTextureImage
 	* @param HUGE number of params
 	*/
-	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, 
+	void createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
+		VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, 
 		VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
 		VkImageCreateInfo imageInfo{};
 		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1715,7 +1744,9 @@ private:
 	/*CALLED BY: createTextureImageLayout
 	* CALLS: begin/endSingleTimeCommands
 	*/
-	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, 
+							uint32_t mipLevels) 
+	{
 		VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
 		VkImageMemoryBarrier barrier{};
@@ -1806,16 +1837,16 @@ private:
 		endSingleTimeCommands(commandBuffer);
 	}
 
-
 	void  createTextureImageView()
 	{
 		textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, 
+			mipLevels,
 			VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
 	/*CALLED BY: createImageViews (plural) - for swapChain creation AND createTextureImageView
 	*/
-	VkImageView createImageView(VkImage image, VkFormat format, 
+	VkImageView createImageView(VkImage image, VkFormat format, uint32_t mipLevels,
 		VkImageAspectFlags aspectFlags) //aspect flags needed when introducing depth buffer
 	{
 		VkImageViewCreateInfo viewInfo{};
@@ -1880,14 +1911,16 @@ private:
 	{
 		VkFormat depthFormat = findDepthFormat();
 
-		createImage(swapChainExtent.width, swapChainExtent.height, depthFormat, 
+		createImage(swapChainExtent.width, swapChainExtent.height,
+			mipLevels,
+			depthFormat, 
 			VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
 
-		depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT); 
+		depthImageView = createImageView(depthImage, depthFormat, 
+						mipLevels,
+						VK_IMAGE_ASPECT_DEPTH_BIT); 
 
-
-		
 	}
 
 	/*Relates to depth and "stencil" support of device
@@ -1932,6 +1965,10 @@ private:
 	}
 
 
+	/*
+	Uses tinyobj library (single header file) to load .obj files (such as what Blender might create)
+	Uses unordered_map and HASHING to reduce redundancy (shared/non-unique vertices) 
+	*/
 	void loadModel()
 	{
 		tinyobj::attrib_t attrib; 
@@ -1947,6 +1984,12 @@ private:
 			throw std::runtime_error(warn + err);
 		
 		}
+
+		std::unordered_map<Vertex, uint32_t> uniqueVertices{}; 
+		//attempting to ref. deleted function error! -> must do: 
+		//1) override == operator for Vertex struct
+		//2) "hash calculation"
+
 
 		for (const auto& shape : shapes) {
 			for (const auto& index : shape.mesh.indices) {
@@ -1966,15 +2009,23 @@ private:
 
 				vertex.color = { 1.0f, 1.0f, 1.0f };
 
-				vertices.push_back(vertex);
-				indices.push_back(indices.size());
+
+				if (uniqueVertices.count(vertex) == 0)
+				{
+					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+					vertices.push_back(vertex);
+				}
+
+				//indices.push_back(indices.size()); //previous version - w/o deduplication 
+				indices.push_back(uniqueVertices[vertex]);
 			}
 		}
 
 		//cout << "vertices.size(): " << vertices.size() << endl;
+		//If using viking_room.obj: 
+		// 11,484 vertices W/O deduplication -> ~3,500 WITH deduplication (~4-fold decrease) 
 		//cout << "sizeof(vertices)*vertices.size(): " << sizeof(vertices)*vertices.size() << endl; 
-		//std::cin.get(); 
-
+		//std::cin.get(); //pause
 	}
 
 	/*
