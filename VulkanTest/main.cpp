@@ -36,6 +36,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include<stb_image.h> //for TEXTURES
 
+#define TINYOBJLOADER_IMPLEMENTATION
 #include<tiny_obj_loader.h> //for MODELS! (complicated textures/meshes)
 
 using std::cout; 
@@ -182,38 +183,40 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 proj; //EXPLICIT alignment -> defensive programming 
 };
 
-//2D RECTANGLE - (two triangles with shared edge) 		 
-const std::vector<Vertex> vertices = {
-	{{-0.5f, -0.5f, 0.0f},		{1.0f, 0.0f, 0.0f},		{1.0f, 0.0f} }, //0 -> added THIRD set for TEXTURE coords
-	{{0.5f, -0.5f, 0.0f},		{0.0f, 1.0f, 0.0f},		{0.0f, 0.0f} }, //1
-	{{0.5f, 0.5f, 0.0f},		{0.0f, 0.0f, 1.0f},		{0.0f, 1.0f} }, //2
-	{{-0.5f, 0.5f, 0.0f},		{1.0f, 1.0f, 1.0f},		{1.0f, 1.0f} } //3
-//{ { -0.75f, -0.75f }, {0.5f, 0.5f, 0.5f} } -> "works"!
-		//{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}, //3
-	,
-	//a SECOND rectangle behind the first
-	{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, 
-	{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-	{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-	{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+////2D RECTANGLE - (two triangles with shared edge) 		 
+//const std::vector<Vertex> vertices = {
+//	{{-0.5f, -0.5f, 0.0f},		{1.0f, 0.0f, 0.0f},		{1.0f, 0.0f} }, //0 -> added THIRD set for TEXTURE coords
+//	{{0.5f, -0.5f, 0.0f},		{0.0f, 1.0f, 0.0f},		{0.0f, 0.0f} }, //1
+//	{{0.5f, 0.5f, 0.0f},		{0.0f, 0.0f, 1.0f},		{0.0f, 1.0f} }, //2
+//	{{-0.5f, 0.5f, 0.0f},		{1.0f, 1.0f, 1.0f},		{1.0f, 1.0f} } //3
+////{ { -0.75f, -0.75f }, {0.5f, 0.5f, 0.5f} } -> "works"!
+//		//{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}, //3
+//	,
+//	//a SECOND rectangle behind the first
+//	{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, 
+//	{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+//	{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+//	{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+//
+//	//	,
+//	////a THIRD rectangle in front of the first?
+//	//{{-0.5f, -0.5f, 0.15f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+//	//{{0.5f, -0.5f, 0.15f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+//	//{{0.5f, 0.5f, 0.15f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+//	//{{-0.5f, 0.5f, 0.15f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+//};
+//
+//const std::vector<uint16_t> indices = //use uint32_t if more than 2^16 (unique) vertices
+//{
+//	0, 1, 2, 2, 3, 0 //draws 0, 1, 2 triangle and 2, 3, 0 triangle
+//	//, 2, 3, 4
+//	,4, 5, 6, 6, 7, 4 //draws 4, 5, 6 and 6, 7, 4 triangle (total of 4 triangles)
+//
+//	//for a THIRD rectangle!
+//	//,8, 9, 10, 10, 11, 8 //yes!
+//};
 
-	//	,
-	////a THIRD rectangle in front of the first?
-	//{{-0.5f, -0.5f, 0.15f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-	//{{0.5f, -0.5f, 0.15f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-	//{{0.5f, 0.5f, 0.15f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-	//{{-0.5f, 0.5f, 0.15f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-};
 
-const std::vector<uint16_t> indices = //use uint32_t if more than 2^16 (unique) vertices
-{
-	0, 1, 2, 2, 3, 0 //draws 0, 1, 2 triangle and 2, 3, 0 triangle
-	//, 2, 3, 4
-	,4, 5, 6, 6, 7, 4 //draws 4, 5, 6 and 6, 7, 4 triangle (total of 4 triangles)
-
-	//for a THIRD rectangle!
-	//,8, 9, 10, 10, 11, 8 //yes!
-};
 
 //Doxygen: 
 /**
@@ -276,8 +279,7 @@ private:
 
 	bool framebufferResized = false;
 
-	VkBuffer vertexBuffer; 
-	VkDeviceMemory vertexBufferMemory;
+
 
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
@@ -301,6 +303,13 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
+	//making verts and indices MEMBER VARS now: (for loading models) 
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;  //no longer 16 bit! since > 65K vertices in viking_room model 
+
+	VkBuffer vertexBuffer; //moved these two down as well 
+	VkDeviceMemory vertexBufferMemory;
+	
 
 
 	//begin member functions 
@@ -1193,7 +1202,9 @@ private:
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16); //again, uint_32 if > 65K unique vertices
+		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		//again, uint_32 if > 65K unique vertices (switched for loading models section)
+
 
 		VkViewport viewport{};
 		viewport.x = 0.0f;
@@ -1582,12 +1593,16 @@ private:
 		//stbi_uc* pixels = stbi_load("textures/doris.jpg", &texWidth, &texHeight, &texChannels,
 		//	STBI_rgb_alpha);
 
-		stbi_uc* pixels = stbi_load("textures/doris.jpg", &texWidth, &texHeight, &texChannels,
-			STBI_rgb_alpha);
+		//stbi_uc* pixels = stbi_load("textures/doris.jpg", &texWidth, &texHeight, &texChannels,
+		//	STBI_rgb_alpha);
 
 		//OTHER jpgs work as well! Even with different image dimensions (and ratios)
 		//stbi_uc* pixels = stbi_load("textures/doris.jpg", &texWidth, &texHeight, &texChannels,
 //	STBI_rgb_alpha);
+
+		stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), 
+			&texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
 
 		VkDeviceSize imageSize = texWidth * texHeight * 4; 
 
@@ -1916,6 +1931,52 @@ private:
 		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 	}
 
+
+	void loadModel()
+	{
+		tinyobj::attrib_t attrib; 
+
+		std::vector<tinyobj::shape_t> shapes; //shape has name, mesh, lines, points
+		//material has name, and MANY light properties!
+		std::vector<tinyobj::material_t> materials; 
+		std::string warn, err;
+
+		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
+			MODEL_PATH.c_str()))
+		{
+			throw std::runtime_error(warn + err);
+		
+		}
+
+		for (const auto& shape : shapes) {
+			for (const auto& index : shape.mesh.indices) {
+				Vertex vertex{};
+
+				vertex.pos = 
+				{
+					attrib.vertices[3 * index.vertex_index + 0],
+					attrib.vertices[3 * index.vertex_index + 1],
+					attrib.vertices[3 * index.vertex_index + 2]
+				};
+
+				vertex.texCoord = {
+					attrib.texcoords[2 * index.texcoord_index + 0],
+					1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+				};
+
+				vertex.color = { 1.0f, 1.0f, 1.0f };
+
+				vertices.push_back(vertex);
+				indices.push_back(indices.size());
+			}
+		}
+
+		//cout << "vertices.size(): " << vertices.size() << endl;
+		//cout << "sizeof(vertices)*vertices.size(): " << sizeof(vertices)*vertices.size() << endl; 
+		//std::cin.get(); 
+
+	}
+
 	/*
 	/*The heart of this program: 
 	*/
@@ -1942,6 +2003,9 @@ private:
 		createTextureImage(); 
 		createTextureImageView();
 		createTextureSampler(); 
+
+
+		loadModel();
 
 		createVertexBuffer(); 
 		createIndexBuffer();
@@ -1975,7 +2039,7 @@ private:
 			glm::vec3(0.0f, 0.0f, 1.0f)); // rotation axis is z (I think)
 
 		//the "view" matrix - look at from above at 45 degree angle
-		ubo.view = glm::lookAt(glm::vec3(1.5f, 1.5f, 1.5f), //eye (1, 1, 1) is closer
+		ubo.view = glm::lookAt(glm::vec3(2.5f, 2.5f, 2.5f), //eye (1, 1, 1) is closer
 			glm::vec3(0.0f, 0.0f, 0.0f), //center -> increases x from 0 to 1 shifts object to right
 											//
 			glm::vec3(0.0f, 0.0f, 1.0f)); //"up" //0 for z will result in clipping (near plane cutoff, I think)
