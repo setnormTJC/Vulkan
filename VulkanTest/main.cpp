@@ -36,11 +36,18 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include<stb_image.h> //for TEXTURES
 
+#include<tiny_obj_loader.h> //for MODELS! (complicated textures/meshes)
+
 using std::cout; 
 using std::endl; 
 
 const uint32_t WIDTH = 1280; //orig: 800 x 600
 const uint32_t HEIGHT = 720;
+
+//for models!
+const std::string MODEL_PATH = "models/viking_room.obj";
+const std::string TEXTURE_PATH = "textures/viking_room.png";
+
 
 const int MAX_FRAMES_IN_FLIGHT = 2; 
 
