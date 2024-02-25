@@ -122,7 +122,7 @@ struct SwapChainSupportDetails {
 
 struct Vertex
 {
-	glm::vec2 pos; 
+	glm::vec3 pos; //onto 3D!
 	glm::vec3 color; 
 	glm::vec2 texCoord; //only u and v, I think (no w) 
 
@@ -144,7 +144,7 @@ struct Vertex
 		//the inPosition var from vert shader: 
 		attributeDescriptions[0].binding = 0; 
 		attributeDescriptions[0].location = 0; //location - perhaps as in the shader file!
-		attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		//R, G here -> vec2
 		attributeDescriptions[0].offset = offsetof(Vertex, pos); //pos is (vec2) member var of vertex
 		//offsetof comes from C! -> header file (stddef.h)
@@ -176,18 +176,26 @@ struct UniformBufferObject {
 
 //2D RECTANGLE - (two triangles with shared edge) 		 
 const std::vector<Vertex> vertices = {
-	{{-0.5f, -0.5f},	{1.0f, 0.0f, 0.0f},		{1.0f, 0.0f} }, //0 -> added THIRD set for TEXTURE coords
-	{{0.5f, -0.5f},		{0.0f, 1.0f, 0.0f},		{0.0f, 0.0f} }, //1
-	{{0.5f, 0.5f},		{0.0f, 0.0f, 1.0f},		{0.0f, 1.0f} }, //2
-	{{-0.5f, 0.5f},		{1.0f, 1.0f, 1.0f},		{1.0f, 1.0f} } //3
+	{{-0.5f, -0.5f, 0.0f},		{1.0f, 0.0f, 0.0f},		{1.0f, 0.0f} }, //0 -> added THIRD set for TEXTURE coords
+	{{0.5f, -0.5f, 0.0f},		{0.0f, 1.0f, 0.0f},		{0.0f, 0.0f} }, //1
+	{{0.5f, 0.5f, 0.0f},		{0.0f, 0.0f, 1.0f},		{0.0f, 1.0f} }, //2
+	{{-0.5f, 0.5f, 0.0f},		{1.0f, 1.0f, 1.0f},		{1.0f, 1.0f} } //3
 //{ { -0.75f, -0.75f }, {0.5f, 0.5f, 0.5f} } -> "works"!
 		//{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}, //3
+	,
+
+	{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, 
+	//a SECOND rectangle behind the first
+	{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+	{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
 };
 
 const std::vector<uint16_t> indices = //use uint32_t if more than 2^16 (unique) vertices
 {
 	0, 1, 2, 2, 3, 0 //draws 0, 1, 2 triangle and 2, 3, 0 triangle
 	//, 2, 3, 4
+	,4, 5, 6, 6, 7, 4 //draws 4, 5, 6 and 6, 7, 4 triangle (total of 4 triangles)
 };
 
 //Doxygen: 
